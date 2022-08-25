@@ -1,0 +1,138 @@
+Private Sub 说明_Click()
+MsgBox ("1.按照余额表导出口径将各校区余额表复制进相应的表格；" & Chr(13) & _
+        " " & Chr(13) & _
+        "2.也可以将余额表导出后，将所有余额表放在同一文件夹" & Chr(13) & _
+        "   使用“合并子报表”功能批量导入，表格名称必须是公司全称；" & Chr(13) & _
+        " " & Chr(13) & _
+        "3.子表格名称必须是校区公司名全称，请勿修改子表名称；" & Chr(13) & _
+        " " & Chr(13) & _
+        "4.点击汇总数据按钮可再次验证总差异，需等待数秒；" & Chr(13) & _
+        " " & Chr(13) & _
+        "5.如需添加校区，请联系制作人解锁表格后添加；" & Chr(13) & _
+        " " & Chr(13) & _
+        "                                                                            制作人：封凯继") '解锁密码：yk821242,重新填写校区函数可运行最下方的三个程序
+
+
+End Sub
+
+Private Sub 合并子报表_Click()
+Dim wb_汇总表 As Workbook
+Dim wb_子报表 As Workbook
+Dim name2 As String
+Dim name3 As String
+Set wb_汇总表 = ActiveWorkbook
+Path = InputBox("请输入需要合并的表格所在的路径")
+If Path = "" Then Exit Sub
+yuan_name = Dir(Path & "\" & "*.xls*") '从该文件夹内遍历所有要合并的表格
+    Do While yuan_name <> ""  '遍历的表格名不为空就进入循环
+       Application.DisplayAlerts = False
+       Set wb_子报表 = GetObject(Path & "\" & yuan_name)
+           name2 = wb_子报表.Name
+           name3 = Left(name2, InStr(name2, ".") - 1)
+           If wb_汇总表.Sheets(name3).Range("c6") <> "" Then wb_汇总表.Sheets(name3).Range("a1:k" & Sheets(name3).Range("a60000").End(xlUp).Row).Clear
+           wb_子报表.Sheets(1).UsedRange.Copy
+           wb_汇总表.Sheets(name3).Range("a1").PasteSpecial xlPasteAll
+           wb_汇总表.Sheets(name3).Columns("c:k").ColumnWidth = 15
+           wb_汇总表.Sheets(name3).Rows(wb_汇总表.Sheets(name3).Range("a60000").End(xlUp).Row & ":" & wb_汇总表.Sheets(name3).Range("a60000").End(xlUp).Row).Copy
+           If wb_汇总表.Sheets(name3).Range("a1") = "" Then
+              wb_汇总表.Sheets(name3).Rows("1:1").PasteSpecial xlPasteAll
+           Else: wb_汇总表.Sheets(name3).Rows("3:3").PasteSpecial xlPasteAll
+           End If
+       wb_子报表.Close False
+       yuan_name = Dir
+    Loop
+MsgBox "完成合并"
+End Sub
+
+Private Sub 汇总数据_Click()
+Dim arr_公司
+Dim arr_数据
+Dim arr_科目编码
+Dim arr_科目名称
+Dim arr_数据1(1 To 10000, 1 To 1)
+Dim arr_辅助项(1 To 10000, 1 To 1)
+Dim arr_往来科目(1 To 10000, 1 To 1)
+Dim endrow_汇总表
+Dim endrow_公司
+Dim nub1 As Long
+Dim nub2 As Long
+Dim nub3 As Long
+endrow_汇总表 = Sheets("汇总表").Range("c60000").End(xlUp).Row
+arr_公司 = Sheets("汇总表").Range("c3:c" & endrow_汇总表).Value
+For nub3 = 1 To UBound(arr_公司)
+    If Sheets(arr_公司(nub3, 1)).Range("a2") <> "" Then
+    endrow_公司 = Sheets(arr_公司(nub3, 1)).Range("b60000").End(xlUp).Row
+    arr_数据 = Sheets(arr_公司(nub3, 1)).Range("c7:c" & endrow_公司).Value
+    arr_科目编码 = Sheets(arr_公司(nub3, 1)).Range("b7:b" & endrow_公司).Value
+    arr_科目名称 = Sheets(arr_公司(nub3, 1)).Range("c7:c" & endrow_公司).Value
+    For nub1 = 1 To endrow_公司 - 6
+        arr_数据1(nub1, 1) = Replace(arr_数据(nub1, 1), "*", "")
+        arr_数据1(nub1, 1) = Replace(arr_数据(nub1, 1), "", "")
+        For nub2 = 1 To UBound(arr_公司)
+            If Left(arr_科目编码(nub1, 1), 4) = "1122" And arr_科目名称(nub1, 1) <> "应收账款" Then arr_往来科目(nub1, 1) = "往来科目" '如果科目编码左边4位为1122，将科目标记为往来科目
+            If Left(arr_科目编码(nub1, 1), 4) = "1221" And arr_科目名称(nub1, 1) <> "其他应收款" Then arr_往来科目(nub1, 1) = "往来科目" '如果科目编码左边4位为1221，将科目标记为往来科目
+            If Left(arr_科目编码(nub1, 1), 4) = "2202" And arr_科目名称(nub1, 1) <> "应付账款" Then arr_往来科目(nub1, 1) = "往来科目" '如果科目编码左边4位为2202，将科目标记为往来科目
+            If Left(arr_科目编码(nub1, 1), 4) = "2241" And arr_科目名称(nub1, 1) <> "其他应付款" Then arr_往来科目(nub1, 1) = "往来科目" '如果科目编码左边4位为2241，将科目标记为往来科目
+            If InStr(arr_数据1(nub1, 1), arr_公司(nub2, 1)) <> 0 Then '如果辅助项包含校区，将校区名字提取出来
+               arr_辅助项(nub1, 1) = arr_公司(nub2, 1)
+               Exit For
+            End If
+        Next
+    Next
+    If Sheets(arr_公司(nub3, 1)).Range("j6") <> "辅助项" Then
+       Sheets(arr_公司(nub3, 1)).Columns("i:i").Copy
+       Sheets(arr_公司(nub3, 1)).Columns("j:k").PasteSpecial xlFormats
+       Sheets(arr_公司(nub3, 1)).Columns("j:k").NumberFormatLocal = "0.00"
+       Sheets(arr_公司(nub3, 1)).Range("j6") = "辅助项"
+       Sheets(arr_公司(nub3, 1)).Range("k6") = "科目类型"
+    End If
+       Sheets(arr_公司(nub3, 1)).Range("j7").Resize(UBound(arr_辅助项)) = arr_辅助项
+       Sheets(arr_公司(nub3, 1)).Range("k7").Resize(UBound(arr_往来科目)) = arr_往来科目
+    End If
+    If Sheets(arr_公司(nub3, 1)).Range("a2") <> "" Then
+       Erase arr_辅助项
+       Erase arr_往来科目
+    End If
+Next
+MsgBox "完成汇总"
+End Sub
+
+Sub 校区往来()
+'填写汇总数据校区函数
+Dim arr_校区
+Dim nub1 As Long
+arr_校区 = Range("c3:c" & [c60000].End(xlUp).Row).Value
+For nub1 = 3 To [c60000].End(xlUp).Row
+    Cells(nub1, 4) = "=SUMIFS(INDIRECT(""" & arr_校区(nub1 - 2, 1) & "!J:J" & """),INDIRECT(""" & arr_校区(nub1 - 2, 1) & "!D:D" & """),A3,INDIRECT(""" & arr_校区(nub1 - 2, 1) & "!E:E" & """),""往来科目"")-SUMIFS(INDIRECT(""" & arr_校区(nub1 - 2, 1) & "!K:K" & """),INDIRECT(""" & arr_校区(nub1 - 2, 1) & "!D:D" & """),A3,INDIRECT(""" & arr_校区(nub1 - 2, 1) & "!E:E" & """),""往来科目"")"
+Next
+MsgBox "完成"
+End Sub
+
+Sub 校区往来1()
+'填写往来科目校区函数
+Dim arr_校区
+Dim nub1 As Long
+arr_校区 = Range("c3:c" & [c60000].End(xlUp).Row).Value
+For nub1 = 3 To [c60000].End(xlUp).Row
+    Cells(nub1, 11) = "=SUMIFS(" & arr_校区(nub1 - 2, 1) & "!H:H," & arr_校区(nub1 - 2, 1) & "!C:C,""*""&A3&""*""," & arr_校区(nub1 - 2, 1) & "!B:B,""2202""&""*"")-SUMIFS(" & arr_校区(nub1 - 2, 1) & "!I:I," & arr_校区(nub1 - 2, 1) & "!C:C,""*""&A3&""*""," & arr_校区(nub1 - 2, 1) & "!B:B,""2202""&""*"")"
+    Cells(nub1, 12) = "=SUMIFS(" & arr_校区(nub1 - 2, 1) & "!H:H," & arr_校区(nub1 - 2, 1) & "!C:C,""*""&A3&""*""," & arr_校区(nub1 - 2, 1) & "!B:B,""2241""&""*"")-SUMIFS(" & arr_校区(nub1 - 2, 1) & "!I:I," & arr_校区(nub1 - 2, 1) & "!C:C,""*""&A3&""*""," & arr_校区(nub1 - 2, 1) & "!B:B,""2241""&""*"")"
+    Cells(nub1, 13) = "=SUMIFS(" & arr_校区(nub1 - 2, 1) & "!H:H," & arr_校区(nub1 - 2, 1) & "!C:C,""*""&A3&""*""," & arr_校区(nub1 - 2, 1) & "!B:B,""1122""&""*"")-SUMIFS(" & arr_校区(nub1 - 2, 1) & "!I:I," & arr_校区(nub1 - 2, 1) & "!C:C,""*""&A3&""*""," & arr_校区(nub1 - 2, 1) & "!B:B,""1122""&""*"")"
+    Cells(nub1, 14) = "=SUMIFS(" & arr_校区(nub1 - 2, 1) & "!H:H," & arr_校区(nub1 - 2, 1) & "!C:C,""*""&A3&""*""," & arr_校区(nub1 - 2, 1) & "!B:B,""1221""&""*"")-SUMIFS(" & arr_校区(nub1 - 2, 1) & "!I:I," & arr_校区(nub1 - 2, 1) & "!C:C,""*""&A3&""*""," & arr_校区(nub1 - 2, 1) & "!B:B,""1221""&""*"")"
+    Cells(nub1, 17) = "=SUMIFS(" & arr_校区(nub1 - 2, 1) & "!H:H," & arr_校区(nub1 - 2, 1) & "!C:C,""*""&A3&""*""," & arr_校区(nub1 - 2, 1) & "!B:B,""2232""&""*"")-SUMIFS(" & arr_校区(nub1 - 2, 1) & "!I:I," & arr_校区(nub1 - 2, 1) & "!C:C,""*""&A3&""*""," & arr_校区(nub1 - 2, 1) & "!B:B,""2232""&""*"")"
+    Cells(nub1, 20) = "=SUMIFS(" & arr_校区(nub1 - 2, 1) & "!H:H," & arr_校区(nub1 - 2, 1) & "!C:C,""*""&A3&""*""," & arr_校区(nub1 - 2, 1) & "!B:B,""4001""&""*"")-SUMIFS(" & arr_校区(nub1 - 2, 1) & "!I:I," & arr_校区(nub1 - 2, 1) & "!C:C,""*""&A3&""*""," & arr_校区(nub1 - 2, 1) & "!B:B,""4001""&""*"")"
+Next
+MsgBox "完成"
+End Sub
+
+Sub 判断是否导入余额表()
+'填写判断是否导入余额表函数
+Dim nub1 As Long
+arr_校区 = Range("c3:c" & [c60000].End(xlUp).Row).Value
+For nub1 = 3 To [c60000].End(xlUp).Row
+    Cells(nub1, 5) = "=IF(OR(" & arr_校区(nub1 - 2, 1) & "!A1=""""," & arr_校区(nub1 - 2, 1) & "!A2=""""," & arr_校区(nub1 - 2, 1) & "!A3=""""),""否"",""是"")"
+Next
+
+MsgBox "完成"
+End Sub
+
+
